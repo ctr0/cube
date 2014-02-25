@@ -1,0 +1,58 @@
+
+namespace cube.lang;
+
+public enum ElementType {
+    /** Class, struct, interface (including annotation type), or enum declaration */
+    TYPE,
+
+    /** Field declaration (includes enum constants) */
+    FIELD,
+
+    /** Method declaration */
+    METHOD,
+
+    /** Parameter declaration */
+    PARAMETER,
+
+    /** Constructor declaration */
+    CONSTRUCTOR,
+
+    /** Local variable declaration */
+    LOCAL_VARIABLE,
+
+    /** Annotation type declaration */
+    ANNOTATION_TYPE,
+
+    /** Namespace declaration */
+    NAMESPACE,
+    
+    /** All */
+    ALL
+}
+
+public #interface target {
+
+	private ElementType[] elementTypes;
+
+	public target(ElementType... elementTypes) {
+		this.elementTypes = elementTypes;
+	}
+	
+	public ElementType[] getElementTypes() {
+		return elementTypes;
+	}
+} 
+
+public #interface header {
+
+	private string headerName;
+	
+	public header(string headerName) {
+		this.header = header;
+	}
+	
+	public string getHeaderName() {
+		return headerName;
+	}
+}
+

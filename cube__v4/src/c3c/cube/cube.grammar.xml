@@ -1,0 +1,114 @@
+<grammar id="cube" version="0.1">
+	
+	<PRODUCTIONS>
+		
+		<simple-identifier regex="*+"/>
+		
+		<complex-identifier>
+			<simple-identifier member recursive>
+				.<simple-identifier member/>
+			</simple-identifier>
+		<complex-identifier>
+		
+		<identifier>
+			<simple-identifier/>
+			<complex-identifier/>
+		</identifier>
+
+		<type>
+			<identifier/>
+			<primitive-type lexeme="false">
+				<token id="byte"/>
+				<token>bool</token>
+				<token>char</token>
+				<token>int</token>
+				<token>float</token>
+				<token>double</token>
+			</primitive-type>
+			<built-in-type lexeme="false">
+				<token>void</token>
+				<token>object</token>
+				<token>string</token>
+				<token>delegate</token>
+			</built-in-type>
+		</type>
+		
+		<record>
+			<token>enum</token>
+			<token>struct</token>
+			<token>class</token>
+			<token>typedef</token>
+		</record>
+		
+		<operator>
+			<unary-operator>
+				<prefix-unary-operator>
+					<token>+</token>
+					<token>++</token>
+					<token>-</token>
+					<token>--</token>
+				</prefix-unary-operator>
+				<sufix-unary-operator>
+					<token>++</token>
+					<token>--</token>
+				</sufix-unary-operator>
+			</unary-operator>
+		</operator>
+		
+	</productions>
+	
+	<generic-decl>
+	
+	</generic-decl>
+	
+	<production name="Type">
+		<type member="true" fire-production optional>
+			<generic-decl/>
+		</type>
+	</production>
+	
+	<production name="ComplexType">
+		<production name="Type" member="true"/>
+		
+	</production>
+	
+	<unit-scope>
+
+		<production name="UsingDecl" description="using declaration">
+			<token id="using">
+				<identifier fire-production="true" member="true" error-message="Missing {$description} identifier">
+					<semi-colon/>
+				</identifier>
+			</token>
+		</production>
+		
+		<production name="NamespaceDecl" description="namespace declaration">
+			<token id="namespace">
+				<simple-identifier fire-production="true" member="true" error-message="Missing namespace identifier">
+					<semi-colon>
+						<namespace-scope/>
+					</semi-colon>
+				</simple-identifier>
+			</token>
+		</production>
+		
+	</unit-scope>
+	
+	<namespace-scope>
+		<production name="FieldDecl" description="field declaration">
+			<type member="true">
+				<simple-identifier fire-production="true" member="true">
+					<semi-colon/>
+					<assigment-operator>
+						<expression error-message="Missing field initializer expression">
+							<semi-colon/>
+						</expression>
+					</assigment-operator>
+				</simple-identifier>
+			</type>
+		</production>
+	<namespace-scope/>
+	
+</grammar>
+
+

@@ -1,0 +1,100 @@
+
+namespace std.atomic;
+
+#include("atomic");
+
+public enum MemoryOrder#as("memory_order") {
+	
+	/**
+	 * The operation does not order memory.
+	 */
+	Relaxed#as("memory_order_relaxed"),
+	
+	/**
+	 * Performs a consume operation on the affected memory location, 
+	 * marking the root of a data dependency tree. 
+	 * The reads from the affected memory location that carry data dependency 
+	 * cannot be reordered before the load; other reads can be. 
+	 * On most platforms, this affects compiler optimization only. 
+	 */
+	Consume#as("memory_order_consume"),
+	
+	/**
+	 * Performs an acquire operation on the affected memory locations, 
+	 * thus making regular memory writes in other threads released through 
+	 * the atomic variable to which it is applied, visible to the current thread. 
+	 * No reads from the affected memory location can be reordered before the load.
+	 */
+	Acquire#as("memory_order_acquire"),
+	
+	/**
+	 * Performs a release operation on the affected memory locations, 
+	 * thus making regular memory writes visible to other threads through 
+	 * the atomic variable to which it is applied. 
+	 */
+	Release#as("memory_order_release"),
+	
+	/**
+	 * The operation has both acquire and release semantics. 
+	 */
+	AcquireRelease#as("memory_order_acq_rel"),
+
+	/**
+	 * The operation has both acquire and release semantics, 
+	 * and in addition, has sequentially-consistent operation ordering. 
+	 */
+    SequentialConsistent#as("memory_order_seq_cst")
+}
+
+/**
+ * The template parameter BaseType must:
+ *  have a trivial default constructor
+ *  have a trivial copy-assignment operator
+ *  have a trivial destructor
+ *  be bitwise-equality-comparable
+ */
+public class atomic<T> {
+
+	public static atomic<T> atomize<T>(T type) {
+		return new atomic<T>(type);
+	}
+
+	public atomic() {}
+
+	public constexpr atomic(T);
+
+	public T operator =(T) volatile;
+
+	public atomic(const atomic);
+
+	public atomic operator =(const atomic);
+
+    public bool isLockFree#as("is_lock_free")() const volatile;
+    
+    public void store(T value, MemoryOrder order = MemoryOrder.SequentialConsistent) volatile;
+
+	public T load(MemoryOrder order = MemoryOrder.SequentialConsistent) const volatile;
+
+	public T exchange(T, MemoryOrder = MemoryOrder.SequentialConsistent) volatile;
+
+	public bool compareExchangeStrong#as("compare_exchange_strong")(
+		T old_value, T new_value, MemoryOrder order = MemoryOrder.SequentialConsistent
+	) volatile;
+        
+    public bool compareExchangeStrong#as("compare_exchange_strong")(
+		T old_value, T new_value,
+		MemoryOrder success_order, MemoryOrder failure_order
+	) volatile;
+
+    public bool compareExchangeStrong#as("compare_exchange_weak")(
+       T old_value, T new_value, MemoryOrder order = MemoryOrder.SequentialConsistent
+	) volatile;
+
+    public bool compareExchangeStrong#as("compare_exchange_weak")(
+		T old_value, T new_value,
+		MemoryOrder success_order, MemoryOrder failure_order
+	) volatile;
+
+	public operator T () const volatile;
+
+}

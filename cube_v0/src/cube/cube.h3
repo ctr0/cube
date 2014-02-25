@@ -1,0 +1,208 @@
+using std;
+using strings;   
+
+namespace cube;
+
+/*
+public enum Type {
+    object,
+    string,
+    array,
+    pointer,	// unsafe
+    reference,	// unsafe
+    byte,
+    char,
+    int,
+    uint,
+    long,
+    ulong,
+    float,
+    double
+}
+*/
+
+
+/*
+public static bool operator instanceof(const object o, Type t) const {
+    return t == o.getType() || dynamic_cast<t>(o) != null;
+}
+
+public static bool operator instanceof(interface<char> c, Type t) const {
+    return t == o.getType();
+}
+*/
+
+public abstract class object {
+
+	public static abstract const Type /*@get*/ type;
+	
+	public virtual const Type getType() const {
+		return Type.object;
+	}
+	
+	public string toString() const {
+		return getType() + "@" + hashCode().toHexString();
+	}
+	
+	public int hashCode() const;
+	
+	public bool operator ==(const @object o) const {
+		return @this == o;
+	}
+	
+	protected object clone() const;
+}
+
+internal virtual class vector : object {
+
+	public const uint get \size;
+		
+	internal size getSize() const;
+
+}
+
+internal struct dynalloc_vector<T> : vector {
+
+	private const size sz;
+	 
+	private T v[];
+	
+	internal dynalloc_vector(size sz) {
+		 this.v = new T[this.sz = sz];
+	}
+	
+	internal unsafe dynalloc_vector(void* v, size sz) {
+		 this.v = std.string.memcpy(v, new T[this.sz = sz], sz);
+	}
+
+	internal override inline size getSize() const {
+		return sz;
+	}
+	
+	public unsafe T* toPointer() {
+        return v;
+    }
+    
+    protected vector clone() const {
+    	return new dynalloc_vector(v, sz);
+    }
+}
+
+public unsafe struct stkalloc_vector<T, size Z> {
+
+	private const size sz = Z;
+	 
+	private T v[Z];
+	
+	internal unsafe stkalloc_vector(void* v) {
+		 std.string.memcpy(v, this.v);
+	}
+	 
+	internal override inline size getSize() const {
+		return sz;
+	}
+	
+	public unsafe inline T* toPointer() {
+        return v;
+    }
+    
+    protected vector clone() const {
+    	return new stkalloc_vector(v, sz);
+    }
+}
+
+public abstract class string : vector {
+	
+	public abstract bool isEmpty();
+	
+	public override inline const Type getType() const {
+        return Type.string;
+    }
+    
+    public override inline string toString() const {
+        return this;
+    }
+    
+    public virtual override int hashCode() {
+		int h = 0;
+		int len = this.length;
+		for (int i = 0; i < len; i++) {
+			h = 31*h + this[i];
+		}
+		return h;
+    }
+}
+
+public unsafe struct stkallok_string<size sz> : stkalloc_vector<char, sz>, string {
+
+	internal unsafe stkalloc_vector(char* v) {
+		 base(v);
+	}
+
+	public override bool isEmpty() {
+		return getSize() != 0;
+	}
+    
+    protected override string clone() const {
+   		stkallok_string<sz> clone = new stkallok_string<getSize()>;
+   		std.string.memcpy(toPointer(), Z);
+    	return clone;
+    }
+}
+
+private struct dynalloc_string : dynalloc_vector<char>, string {
+
+	private int hash = 0;
+
+    internal unsafe dynalloc_string(string s) {
+       base(s, s.size);
+    }
+    
+    public override bool isEmpty() {
+		return this.size == 0;
+	}
+    
+    public override int hashCode() {
+    	if (hash == 0) hash = base.string.hashCode();
+    	return hash;
+    }
+}
+
+internal unsafe struct c_str : string {
+
+	public override bool isEmpty() {
+		return this[0] != '\0';
+	}
+
+	internal override inline size getSize() const {
+		return std.string.strlen(this);
+    }
+}
+
+internal interface<char> : object {
+
+	private char self;
+	
+	
+
+    public inline bool isAlpha() {
+        return std.ctype.isAlpha(this);
+    }
+    
+    public override const Type getType() const {
+        return Type.char;
+    }
+    
+    public override string toString() const {
+        return new dynalloc_string(@this, 1);
+    }
+    
+    protected inline override char clone() const {
+    	return this;
+    }
+    
+    protected char clone() const {
+    	return this;
+    }
+}
+

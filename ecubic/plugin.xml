@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         id="cubeNature"
+         name="Cube Project Nature"
+         point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run
+               class="ecubic.builder.CubeNature">
+         </run>
+      </runtime>
+      <builder
+            id="ecubic.builder.CubeProjectBuilder">
+      </builder>
+   </extension>
+   <extension
+         id="cubeProblem"
+         name="Cube Problem"
+         point="org.eclipse.core.resources.markers">
+      <super
+            type="org.eclipse.core.resources.problemmarker">
+      </super>
+      <persistent
+            value="true">
+      </persistent>
+   </extension>
+   <extension
+         point="org.eclipse.ui.newWizards">
+      <category
+            id="ecubic.wizard.CubeCategory"
+            name="Cube">
+      </category>
+      <wizard
+            canFinishEarly="false"
+            category="ecubic.wizard.CubeCategory"
+            class="ecubic.wizard.CubeProjectWizard"
+            hasPages="true"
+            icon="icons/ecubic.gif"
+            id="ecubic.wizard.CubeProjectWizard"
+            name="Cube Project"
+            project="true">
+      </wizard>
+   </extension>
+   <extension
+         point="org.eclipse.ui.perspectives">
+      <perspective
+            class="ecubic.perspective.CubePerspectiveFactory"
+            fixed="false"
+            icon="icons/ecubic.gif"
+            id="ecubic.perspective.CubePerspective"
+            name="Cube">
+      </perspective>
+   </extension>
+   <extension
+         id="ecubic.builder.CubeProjectBuilder"
+         name="Cube Project Builder"
+         point="org.eclipse.core.resources.builders">
+      <builder
+            hasNature="true">
+         <run
+               class="ecubic.builder.CubeProjectBuilder">
+         </run>
+      </builder>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views">
+      <view
+            class="ecubic.view.CubeProjectNavigator"
+            icon="icons/ecubic.gif"
+            id="ecubic.navigator.CubeProjectNavigator"
+            name="Cube Project Navigator">
+      </view>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="ecubic.preference.CubePreferenceInitializer">
+      </initializer>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            class="ecubic.preference.CubePreferencePage"
+            id="ecubic.preference.CubePreferencePage"
+            name="Cube">
+      </page>
+   </extension>
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            adaptable="true"
+            id="ecubic.contribution1"
+            nameFilter="*"
+            objectClass="org.eclipse.core.resources.IProject">
+         <action
+               class="ecubic.builder.ToggleNatureAction"
+               enablesFor="+"
+               icon="icons/ecubic.gif"
+               id="ecubic.addRemoveNatureAction"
+               label="Add/Remove Cube Nature"
+               menubarPath="additions">
+         </action>
+      </objectContribution>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            class="ecubic.editor.CubeMultiPageEditor"
+            contributorClass="ecubic.editor.CubeMultiPageEditorContributor"
+            default="false"
+            extensions="cube"
+            icon="icons/fcube.gif"
+            id="ecubic.editor.CubeMultiPageEditor"
+            name="Cube Multi-page Editor">
+      </editor>
+   </extension>
+
+</plugin>

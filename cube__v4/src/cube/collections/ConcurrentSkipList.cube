@@ -1,0 +1,339 @@
+/**  
+ *	Concurrent Skip List
+ *  Copyright © 2010, Dmitry Vyukov
+ *  Distributed under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation,
+ *  either version 3 of the License,
+ *  or (at your option) any later version.
+ *  See: http://www.gnu.org/licenses
+ */
+
+#include <assert.h>
+#include <malloc.h>
+#include <windows.h>
+
+#include <stdexcept>
+#include <vector>
+#include <atomic>
+
+using std;
+
+public class ConcurrentSkipList<T, Traits> {
+
+	private static const size MAX_LEVEL = 44;
+	private static const size DENSITY_FACTOR = 1;
+
+	private static class Node {
+		T item;
+		atomic<Node> next[1];
+		Node(T item) {
+			item(item) {
+		}
+	};
+
+	private static class Track {
+		Node node;
+		Node next;
+	};
+
+	private static class Thread {
+		atomic<size> size;
+		size nextCheck;
+		uint64 rand;
+		Thread next;
+		object cache[MAX_LEVEL];
+		vector<object> memBlocks;
+	};
+
+	private const ulong tls_slot_;
+	private ulong allocation_granularity_;
+	private Node const head_;
+	private atomic<size> level_;
+	private atomic<Thread[]> threadList;
+
+	public ConcurrentSkipList() :
+		head_(alloc_sentinel()), tls_slot_(TlsAlloc()) {
+		if (tls_slot_ == TLS_OUT_OF_INDEXES)
+			throw runtime_error("failed to allocate a TLS slot");
+		level_.store(1, memory_order_relaxed);
+		thread_list_.store(0, memory_order_relaxed);
+		SYSTEM_INFO info = { };
+		GetSystemInfo(&info);
+		allocation_granularity_ = info.dwAllocationGranularity;
+	}
+	
+	public ~ConcurrentSkipList() {
+		Thread[] threads = threadList.load(MemoryOrder.Relaxed);
+		do {
+			for (size i = 0; i != threads.memBlocks.size(); i++) {
+				VirtualFree(threads->memBlocks[i], 0, MEM_RELEASE);
+			}
+			Thread[] nexts = threads->next;
+			_aligned_free(threads);
+			threads = nexts;
+		} while (theads != null);
+		
+		TlsFree(tls_slot_);
+		_aligned_free(head_);
+	}
+	
+	private ConcurrentSkipList(const ConcurrentSkipList list);
+	private void operator =(const ConcurrentSkipList list);
+	
+	public bool insert(T item, T*& iter) {
+		Track track[MAX_LEVEL];
+		const size maxLevel = level_.load(MemoryOrder.Acquire);
+		size level = maxLevel;
+		Node prev = head_;
+		Node pos = prev.next[level].load(MemoryOrder.Consume);
+		for (;;) {
+			if (pos != null) {
+				traits_t::comp_result_t cmp = traits_t::compare(item, pos.item);
+				if (cmp > 0) {
+					prev = pos;
+					pos = pos.next[level].load(MemoryOrder.Consume);
+				} else if (cmp < 0) {
+					track[level].node = prev;
+					track[level].next = pos;
+					if (level == 0)
+						break;
+					level -= 1;
+					pos = prev.next[level].load(MemoryOrder.Consume);
+				} else {
+					iter = &pos->item;
+					return false;
+				}
+			} else {
+				track[level].node = prev;
+				track[level].next = pos;
+				if (level == 0)
+					break;
+				level -= 1;
+				pos = prev.next[level].load(MemoryOrder.Consume);
+			}
+		}
+
+		// get private descriptor for the current thread
+		Thread* thr = getThreadDesc();
+		// increment local node counter
+		const size size = thr.size.load(MemoryOrder.Relaxed);
+		thr.size.store(size + 1, MemoryOrder.Relaxed);
+		// check as to whether we need to aggregate counters now
+		bool const do_update_level = (size >= thr.nextCheck);
+		
+		level = random_level(thr);
+		Node node = alloc_node(thr, level, item);
+
+		for (size i = 0; i <= level; i += 1) {
+			for (;;) {
+				node.next[i].store(track[i].next, MemoryOrder.Relaxed);
+				if (track[i].node.next[i].compareExchangeStrong(
+						track[i].next, node, MemoryOrder.Relaxed
+					)
+				)	break;
+				assert track[i].next != null;
+				RETRY:
+				traits_t::comp_result_t cmp = traits_t::compare(item, track[i].next->item);
+				if (cmp > 0) {
+					track[i].node = track[i].next;
+					track[i].next = track[i].node->next[i].load(
+							memory_order_consume);
+					if (track[i].next)
+						goto RETRY;
+				} else if (cmp == 0) {
+					assert(i == 0);
+					free_node(thr, level, node);
+					iter = &track[i].next->item;
+					return false;
+				}
+			}
+		}
+
+		if (doUpdateLevel)
+			updateLevel();
+
+		iter = &node->item;
+		return true;
+	}
+
+	T find(T item) {
+		size level = level_.load(MemoryOrder.Acquire);
+		Node prev = head_;
+		Node pos = prev.next[level].load(MemoryOrder.Consume);
+		for (;;) {
+			if (pos != null) {
+				traits_t::comp_result_t cmp = traits_t::compare(item, pos->item);
+				if (cmp > 0) {
+					prev = pos;
+					pos = pos.next[level].load(MemoryOrder.Consume);
+				} else if (cmp < 0) {
+					if (level == 0)
+						return 0;
+					level -= 1;
+					pos = prev.next[level].load(MemoryOrder.Consume);
+				} else {
+					return pos.item;
+				}
+			} else {
+				if (level == 0)
+					return 0;
+				level -= 1;
+				pos = prev.next[level].load(MemoryOrder.Consume);
+			}
+		}
+	}
+
+	template<typename func_t>
+	void foreach(func_t& func) {
+		node_t* pos = head_->next[0].load(memory_order_relaxed);
+		while (pos) {
+			func(pos->item);
+			pos = pos->next[0].load(memory_order_relaxed);
+		}
+	}
+	
+	private size randomRevel(Thread thr) {
+		const size maxLevel = level_.load(MemoryOrder.Acquire);
+		size r = thr->rand * 16807;
+		thr.rand = r;
+		size tmp = (size) (r % (1ull << (max_level * DENSITY_FACTOR - 1)));
+		ulong idx;
+		
+#if _M_X64
+		if (_BitScanReverse64(&idx, tmp))
+#else
+		if (_BitScanReverse(&idx, tmp))
+##
+			idx += 1;
+		else
+			idx = 0;
+			
+		const size level = maxLevel - idx / DENSITY_FACTOR - 1;
+		assert level < maxLevel;
+		return level;
+	}
+
+	#noinline
+	private void updateLevel() {
+		// iterate over all thread descriptors
+		// and calculate total node count
+		Thread thr = getThreadDesc();
+		size totalSize = 0;
+		size threadCount = 0;
+		Thread desc = threadList.load(MemoryOrder.Consume);
+		while (desc != null) {
+			threadCount += 1;
+			totalSize += desc.size.load(MemoryOrder.Relaxed);
+			desc = desc.next;
+		}
+		// check as to whether we crossed next 2^N mark or not
+		size newLevel = level_.load(MemoryOrder.Acquire);
+		if (totalSize > (1ull << new_level) * DENSITY_FACTOR) {
+			// if yes, update max possible node level
+			unsigned long idx;
+#if _M_X64
+			_BitScanReverse64(&idx, total_size);
+#else
+			_BitScanReverse(&idx, total_size);
+##
+			new_level = idx + 1;
+			if (new_level >= MAX_LEVEL)
+				new_level = MAX_LEVEL - 1;
+			size cmp = level_.load(MemoryOrder.Relaxed);
+			
+			do if (cmp >= new_level) {
+				new_level = cmp;
+				break;
+			} while (
+				false == level_.compareExchangeStrong(
+					cmp, new_level, MemoryOrder.Relaxed
+				)
+			);
+		}
+		// recalculate when we need to do next aggregation
+		const size remain = (1ull << new_level) * DENSITY_FACTOR - total_size;
+		const size size = thr->size.load(MemoryOrder.relaxed);
+		thr->nextCheck = size + remain / thread_count / 2;
+	}
+
+	Node allocSentinel() {
+		size const sz = sizeof node + sizeof atomic<Node> * (MAX_LEVEL - 1);
+		object mem = _aligned_malloc(sz, 64);
+		if (mem == null)
+			throw bad_alloc();
+		Node node = new (mem) Node(new Item());
+		for (size i = 0; i != MAX_LEVEL; i++)
+			node.next[i].store(0, MemoryOrder.Relaxed);
+		return node;
+	}
+
+	Node allocNode(Thread thr, size level, Item item) {
+		assert thr != null && level < MAX_LEVEL;
+		object mem = thr.cache[level];
+		if (mem != null) {
+			thr.cache[level] = mem;
+			Node node = new (mem) Node(item);
+			return node;
+		}
+		return allocNodeSlow(thr, level, item);
+	}
+
+	void freeNode(Thread thr, size level, Node node) {
+		assert thr != null && level < MAX_LEVEL && node != null;
+		delete node;
+		object node = thr->cache[level];
+		thr.cache[level] = node;
+	}
+
+	#noinline
+	Node allocNodeSlow(Thread thr, size level, Item item) {
+		assert(thr && level < MAX_LEVEL && thr->cache[level] == 0);
+
+		void* mem = VirtualAlloc(0, allocation_granularity_, MEM_RESERVE
+				| MEM_COMMIT, PAGE_READWRITE);
+		if (mem == 0)
+			throw bad_alloc();
+		thr->memBlocks.push_back(mem);
+		char* head = 0;
+		char* pos = (char*) mem;
+		char* end = pos + allocation_granularity_;
+		size_t const sz = sizeof(node_t) + sizeof(atomic<node_t*> ) * level;
+		for (; pos + sz <= end; pos += sz) {
+			*(char**) pos = head;
+			head = pos;
+		}
+		thr->cache[level] = head;
+		return alloc_node(thr, level, item);
+	}
+
+	Thread getThreadDesc() {
+		Thread thr = (Thread) TlsGetValue(tls_slot_);
+		if (thr)
+			return thr;
+		return initThreadDesc();
+	}
+
+	#noinline
+	Thread initThreadDesc() {
+		object mem = _aligned_malloc(sizeof(Thread), 128);
+		if (mem == null)
+			throw bad_alloc();
+		TlsSetValue(tls_slot_, mem);
+		Thread thr = new (mem) Thread();
+		thr.rand = __rdtsc() + GetCurrentThreadId();
+		thr.memBlocks.reserve(1024);
+		thr.size.store(0, MemoryOrder.Relaxed);
+		thr.nextCheck = 1;
+		for (size i = 0; i != MAX_LEVEL; i++)
+			thr.cache[i] = 0;
+		thr.next = thread_list_.load(MemoryOrder.Acquire);
+		while (
+			false == thread_list_.compareExchangeStrong(
+				thr.next, thr,	MemoryOrder.AcquireRelease
+			)
+		);
+		return thr;
+	}
+
+}
+

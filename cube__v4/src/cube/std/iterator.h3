@@ -1,0 +1,18 @@
+
+using std.algorithms;
+
+namespace std.stl;
+
+public class iterator<T> {
+	
+	public typedef reference T&;
+	public typedef pointer	T*;
+	
+	public iterator<T> operator ++();
+	public iterator<T> operator --();
+	public iterator<T> operator [const int index]();
+	
+	public T operator *() const;
+	
+	
+}

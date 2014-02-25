@@ -1,0 +1,45 @@
+	
+namespace std.stl;
+
+#include("vector")
+
+public abstract class vector<T #if<GONE>, A##> : object {
+
+	public static const size MAX_SIZE;
+
+	public size size();
+	
+	public size getCapacity#as("capacity")();
+	
+	public bool isEmpty#as("empty")();
+	
+	public void reserve(size n);
+	
+	public void resize(size n);
+	
+	public T operator [](size index) {
+		return get(index);
+	}
+	
+	public const T operator [](size index) const {
+		return get(index);
+	}
+	
+	public T operator unsafe[]#as("[]")(size index);
+	
+	public const T operator unsafe[]#as("[]")(size index) const;
+	
+	public T get#as("at")(size index);
+	
+	public const T get#as("at")(size index) const;
+	
+	public void add#as("push_back")(const T value);
+	
+	public void pop#as("pop_back")(const T value);
+	
+	public void clear();
+	
+#if<GONE> 
+	public A getAllocator#as("get_allocator")();
+#
+}
